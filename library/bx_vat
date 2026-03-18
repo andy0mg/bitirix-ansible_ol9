@@ -530,6 +530,8 @@ get_bx_packages() {
         php_rollback_versions_str=${php_rollback_versions_str}$item
     done
     php_rollback_versions_str=${php_rollback_versions_str}"]"
+    # Fallbacks for empty PHP version info to keep JSON valid
+    [[ -z "$php_union_version" ]] && php_union_version=0
     # nodejs version
     nodejs_version=$(rpm -qa --queryformat '%{name} %{version} \n' nodejs | awk '{print $2}')
     if [[ -n $nodejs_version ]]; then
