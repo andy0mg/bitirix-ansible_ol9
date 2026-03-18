@@ -1,0 +1,13 @@
+---
+- name: remove auto.cnf file
+  file:
+    path: /var/lib/mysql/auto.cnf
+    state: absent
+  when: mysql_uni_version|int >= 57
+
+- name: restart service mysqld
+  service:
+    name: "{{ mysql_service }}"
+    state: restarted
+  tags: service
+  when: mysql_uni_version|int >= 57

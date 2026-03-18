@@ -1,0 +1,55 @@
+---
+# configure pt-slave-restart
+- name: install percona repository
+  yum:
+    name: "{{ percona_release_rpm }}"
+    state: latest
+  ignore_errors: true
+
+- name: update percona release
+  shell: yum -y --nogpg update percona-release
+
+- name: enable percona tools repository
+  shell: percona-release enable tools release
+
+- name: install percona-toolkit
+  yum: 
+    name: percona-toolkit
+    state: latest
+
+- name: create configuration directory
+  file:
+    dest: /etc/percona-toolkit
+    state: directory
+    mode: 0750
+
+- name: create configuration file
+  template:
+    dest: /etc/percona-toolkit/pt-slave-restart.conf
+    src: pt-slave-restart.conf.j2
+    mode: 0640
+    owner: root
+    group: root
+
+- name: create service file
+  template:
+    dest: /etc/systemd/system/pt-slave-restart.service
+    src: pt-slave-restart.service.j2
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+- name: create init.d file
+  file:
+    src: /opt/webdir/bin/pt-slave-restart
+    dest: /etc/init.d/pt-slave-restart
+    state: link
+
+- name: enable service pt-slave-restart
+  service:
+    name: pt-slave-restart
+    enabled: yes
+    state: started
+
+- name: starting pt-slave-restart
+  shell: /opt/webdir/bin/pt-slave-restart start
+  args:
+    creates: /var/run/slave_restart.pid

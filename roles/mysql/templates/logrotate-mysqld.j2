@@ -1,0 +1,14 @@
+# {{ ansible_managed }}
+# rotate slow and error log for mysql service
+{{ mysql_logs }}/*.log
+{
+    su mysql mysql
+    copytruncate
+    ifempty
+    daily
+    rotate 10
+    missingok
+    compress
+    delaycompress
+    sharedscripts
+}

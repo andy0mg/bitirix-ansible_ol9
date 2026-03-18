@@ -1,0 +1,33 @@
+---
+# upgrade php package from 7.0 version to 7.1
+- name: disable remi php70 repository
+  ini_file: 
+    dest: /etc/yum.repos.d/remi-php70.repo
+    section: remi-php70 
+    option: enabled 
+    value: 0
+  tags: remi
+
+- name: enable remi php71 repository
+  ini_file: 
+    dest: /etc/yum.repos.d/remi-php71.repo
+    section: remi-php71 
+    option: enabled 
+    value: 1
+  tags: remi
+
+- name: update system by remi repository
+  yum: 
+    name: php* 
+    state: latest
+    update_cache: yes
+    update_only: yes
+  tags: php7
+
+- include_tasks: php_ext_dublicates.yml
+
+- name: restart httpd
+  service:
+    name=httpd
+    state=restarted
+  tags: php7

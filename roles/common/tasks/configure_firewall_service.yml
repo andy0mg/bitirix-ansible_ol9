@@ -1,0 +1,40 @@
+---
+# get some usefull variables
+# iptables_status: stateful; stateless; disabled
+# firewalld_status: running or not_running (service)
+# firewalld_package: installed or not_installed 
+# firewalld_bx_type: installed or not_installed (configure bx_trusted or not)
+# 
+# want_iptables
+- include_tasks: firewall-service-tests.yml
+
+- name: disable firewalld service
+  service:
+    name: firewalld
+    state: stopped
+    enabled: no
+  when: iptables_status == 'disabled'
+
+- include_tasks: iptables-centos6.yml
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "6" and iptables_status != "disabled"
+
+# use iptables-services
+- include_tasks: iptables-centos7.yml
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7" and iptables_status == "stateless"
+
+- include_tasks: iptables-centos7.yml
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7" and iptables_status != "disabled" and want_iptables
+
+- include_tasks: iptables-centos7.yml
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7" and iptables_status == "stateful" and firewalld_status == "not_running"
+
+# use firewalld
+- include_tasks: firewalld-centos7.yml
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7" and iptables_status == "stateful" and firewalld_status == "running" and firewalld_tolerance == "compatible"
+
+- include_tasks: iptables-centos7.yml
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7" and iptables_status == "stateful" and firewalld_status == "running" and firewalld_tolerance == "non_compatible"
+
+# use firewalld for centos stream 9
+- include_tasks: firewalld-centos9.yml
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9" and iptables_status == "stateful" and firewalld_status == "running" and firewalld_tolerance == "compatible"

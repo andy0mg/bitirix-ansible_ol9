@@ -1,0 +1,83 @@
+#!/bin/bash
+# {{ ansible_managed }}
+# Minimal Sphinx configuration for Bitrix
+#
+# Include site search db
+
+include_configs() {
+    CONF_DIR="{{ sphinx_inx_dir }}"
+    if [ -d "$CONF_DIR" ]; then
+        for file in "$CONF_DIR"/*; do
+            if [ ! -f "$file" ] || [ "$(basename "$file")" = "." ] || [ "$(basename "$file")" = ".." ]; then
+                continue
+            fi
+            cat "$file"
+            echo -e "\n\n"
+        done
+    fi
+}
+
+include_configs
+
+cat << 'EOT'
+index testrt
+{
+    type		= rt
+    rt_mem_limit	= 128M
+
+    path		= /var/lib/sphinx/testrt
+
+    rt_field		= title
+    rt_field		= content
+    rt_attr_uint	= gid
+
+}
+EOT
+
+cat << EOT
+searchd
+{
+	listen			= {{ sphinx_general_listen }}
+	listen			= {{ sphinx_mysqlproto_listen }}:mysql41
+	log			= {{ sphinx_main_log }}
+	query_log		= {{ sphinx_query_log }}
+	pid_file		= {{ sphinx_run_file }}
+	binlog_path		= {{ sphinx_lib_dir }}
+
+	read_timeout		= 5
+	max_children		= 30
+	max_matches		= 1000
+	seamless_rotate		= 1
+	preopen_indexes		= 1
+	unlink_old		= 1
+	workers			= threads # for RT to work
+	binlog_max_log_size	= 512M
+	#  2 - flush every transaction, sync every second. Good performance, and every committed transaction is guaranteed to be saved in case of daemon crash.
+	#  1 - flush and sync every transaction. Worst performance, but every committed transaction data is guaranteed to be saved
+	binlog_flush		= 2
+	rt_flush_period		= 3600
+}
+
+# {{ sphinx_type }}
+EOT
+
+{% if sphinx_type == '21' %}
+cat << 'EOT'
+indexer
+{
+	lemmatizer_cache	= 128M
+	lemmatizer_base		= /etc/sphinx/bx/dicts/
+}
+EOT
+{% else %}
+cat << 'EOT'
+indexer
+{
+	lemmatizer_cache	= 128M
+}
+common
+{
+	lemmatizer_base		= /usr/share/sphinx/dicts
+}
+EOT
+{% endif %}

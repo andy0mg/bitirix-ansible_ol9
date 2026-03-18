@@ -1,0 +1,53 @@
+---
+# push_host
+- name: get current settings
+  bx_vat:
+
+- name: update push configuration
+  lineinfile:
+    dest: /etc/sysconfig/push-server-multi
+    regexp: "WS_HOST={{ push_host }}"
+    line: "WS_HOST={{ push_server_netaddr }}"
+  register: push
+
+- name: update nginx settings
+  template:
+    src: nginx-rtc-im_settings.conf.j2
+    dest: /etc/nginx/bx/settings/rtc-im_settings.conf
+  register: push_nginx
+
+- name: reset configuration
+  shell: /usr/bin/push-server-multi reset
+  when: push.changed
+
+- name: stop service
+  shell: pgrep node -P 1 -u bitrix | xargs kill -9
+  when: push.changed
+  ignore_errors: true
+
+# Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+- name: start service
+  service:
+    name: push-server
+    state: restarted
+  when: push.changed and (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+# CentOS 7
+- name: start service
+  service:
+    name: push-server
+    state: restarted
+  when: push.changed and ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+# CentOS 6
+- name: start service
+  service:
+    name: push-server-multi
+    state: restarted
+  when: push.changed and ansible_distribution == "CentOS" and ansible_distribution_major_version == "6"
+
+- name: restart nginx
+  service:
+    name: nginx
+    state: restarted
+  when: push_nginx.changed

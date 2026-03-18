@@ -1,0 +1,28 @@
+---
+- set_fact:
+    manage: "{{ manage | default('configure_nodejs') }}"
+    hostname: "{{ hostname | default(inventory_hostname) }}"
+    push_server: "{{ push_server | default(inventory_hostname) }}"
+
+- debug:
+    msg: "{{ ansible_playbook_file }}"
+
+- name: include variables from temporary config
+  include_vars:
+    file: "{{ ansible_playbook_file }}"
+  when: "ansible_playbook_file != 'NOT_DEFINED'"
+
+- name: additional gathering facts
+  bx_vat: 
+
+- debug:
+    msg: "manage = {{ manage }} and hostname = {{ hostname }}"
+
+- include_tasks: remove_nodjs_push-server.yml
+  when: "manage == 'remove_nodjs' and inventory_hostname == hostname"
+
+- include_tasks: remove_nodjs_push-server.yml
+  when: "manage == 'configure_nodejs' and inventory_hostname == push_server"
+
+- include_tasks: configure_nodjs_push-server.yml
+  when: "manage == 'configure_nodejs' and inventory_hostname == hostname"

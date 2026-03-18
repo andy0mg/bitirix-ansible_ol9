@@ -1,0 +1,85 @@
+---
+######## role is fits for monitoring server and monitored nodes
+# configure:
+# munin
+# munin-node
+# nagios
+# nrpe
+########
+
+## package installation
+- name: Install common packages
+  yum: pkg={{ packages }} state=latest update_cache=yes
+  vars:
+    packages:
+      - munin-common
+      - munin-node
+      - nrpe
+      - nagios-plugins
+      - nagios-plugins-http
+      - nagios-plugins-disk
+      - nagios-plugins-load
+      - nagios-plugins-procs
+      - nagios-plugins-swap
+      - nagios-plugins-users
+      - nagios-plugins-mysql
+      - perl-Cache-Memcached
+      - net-tools
+
+# WEB monitoring
+- name: Configure apache status page
+  template:
+    src: bx_apache_status.conf.j2
+    dest: /etc/httpd/bx/conf/bx_apache_status.conf
+    owner: bitrix
+    group: root
+    mode: 0644
+  when: "'bitrix-web' in group_names"
+  notify: restart httpd
+
+- name: Configure nginx status page
+  template:
+    src: nginx_server_status.conf.j2 
+    dest: /etc/nginx/bx/site_avaliable/nginx_server_status.conf
+    owner: bitrix
+    group: root
+    mode: 0644
+  notify: restart nginx
+  when: "'bitrix-web' in group_names"
+
+- name: Enable nginx status page
+  file:
+    src: /etc/nginx/bx/site_avaliable/nginx_server_status.conf
+    dest: /etc/nginx/bx/site_enabled/nginx_server_status.conf
+    state: link
+  when: "'bitrix-web' in group_names"
+  notify: restart nginx
+
+- include_tasks: configure_munin_agent.yml
+
+- include_tasks: configure_nrpe_agent.yml
+
+- include_tasks: configure_monitoring_server.yml
+
+# ANSIBLE configuration update
+- name: Update group variables
+  delegate_to: "{{ cluster_web_server }}"
+  bx_conf:
+    group: hosts
+    state: update
+    monitoring_status: enable
+    monitoring_server: "{{ monitoring_server| default(cluster_web_server) }}"
+    nagios_server_login: "{{ nagios_server_login }}"
+    nagios_server_password: "{{ nagios_server_password }}"
+    munin_server_login: "{{ munin_server_login }}"
+    munin_server_password: "{{ munin_server_password }}"
+  when: inventory_hostname == monitoring_server
+
+- name: Update group variables for email settings
+  delegate_to: "{{ cluster_web_server }}"
+  bx_conf:
+    group: hosts
+    state: update 
+    notify_nagios: "{{ notify_nagios }}"
+    monitor_email: "{{ monitor_email }}"
+  when: notify_nagios is defined and notify_nagios and inventory_hostname == monitoring_server

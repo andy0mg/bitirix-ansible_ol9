@@ -1,0 +1,16 @@
+---
+- include_tasks: reset_cert_per_sites.yml
+  when: sites_cnt > 0
+
+#- include_tasks: reset_cert_push_server.yml
+#  when: push_server is defined and push_server > 0
+
+- name: reload nginx
+  service: 
+    name: nginx
+    state: reloaded
+
+- name: reload httpd
+  service: 
+    name: httpd
+    state: reloaded

@@ -1,0 +1,21 @@
+[bitrix-hosts]
+localhost ansible_connection=local
+
+[bitrix-mgmt]
+localhost ansible_connection=local
+
+[bitrix-web]
+localhost ansible_connection=local
+
+[bitrix-mysql]
+localhost ansible_connection=local
+
+[bitrix-pgsql]
+localhost ansible_connection=local
+
+[bitrix-memcached]
+localhost ansible_connection=local
+
+[bitrix-sphinx]
+
+[bitrix-push]

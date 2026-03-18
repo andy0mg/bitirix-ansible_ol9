@@ -1,0 +1,192 @@
+---
+#  create link site
+#  
+#  mandatory options:
+#  web_site_name    - name for web server (ex. example.org)
+#  web_kernel_root  - directory with kernel data (ex. /usr/share/bitrix)
+#
+#  non-mandatory options:
+#  web_kernel_site  - kernel site name ( playbook try found this name in the pool)
+#  web_site_dir     - document root for new site
+#  
+#  ansible_playbook_file - all options can pass by yml file
+#
+
+# load variables from groups config file
+- name: gathering facts about kernel
+  delegate_to: "{{ cluster_web_server }}"
+  bx_facts:
+    name: status
+    password: 0
+    site: "{{ web_kernel_site }}"
+    site_dir: "{{ web_kernel_root }}"
+  tags: sites_facts
+
+- name: create variable with kernel options
+  set_fact:
+    kernel_default: "{{ hostvars[inventory_hostname]['bx_sites'][0] }}"
+  tags: sites_facts
+
+- name: set variables for kernel site
+  set_fact:
+    kernel_default_root: "{{ kernel_default.DocumentRoot }}"
+    kernel_default_charset: "{{ kernel_default.SiteCharset }}"
+    kernel_default_db: "{{ kernel_default.DBName }}"
+  tags: sites_facts
+
+- name: create additional variables when they not defined in the input
+  delegate_to: "{{ cluster_web_server }}"
+  bx_generate_site_vars:
+    site_type: "{{ web_site_type }}"
+    site_name: "{{ web_site_name }}"
+    site_dir: "{{ web_site_dir }}"
+  register: site_vars
+  tags: configure_site
+
+- name: set filesystem options for new site
+  set_fact:
+    web_site_shname: "{{ site_vars.site_short }}"
+    web_site_csync2: "{{ site_vars.site_csync2 }}"
+    web_site_root_dir: "{{ site_vars.site_dir }}"
+    web_site_sess_dir: "{{ site_extentend_php_sess }}/{{ web_site_name }}"
+    web_site_upld_dir: "{{ site_extentend_upload }}/{{ web_site_name }}"
+  tags: configure_site
+
+#- name: set charset options for new site
+#  set_fact:
+#    bitrix_site_encoding: cp1251
+#    bitrix_site_collation: cp1251_general_ci
+#    bitrix_site_php_internal: "php_admin_value mbstring.internal_encoding cp1251"
+#  when: "kernel_default_charset == 'windows-1251'"
+#
+#- name: set charset options for new site
+#  set_fact:
+#    bitrix_site_php_internal: "php_admin_value default_charset cp1251"
+#  when: "kernel_default_charset == 'windows-1251' and php_older_version == 1"
+
+# defined is_cluster and bx_sites_info variables
+- include_tasks: bx_sites_info.yml
+
+# testing input options - to avoid the situation with overwriting existing data
+# 1. apache and nginx config
+# 2. directories:  document root, sessions and uploads
+# 3. kernel contains bitrix, upload and images directory
+- include_tasks: test_site_exist.yml
+
+# test images, upload and bitrix directories
+- name: check directory bitrix exists
+  delegate_to: "{{ cluster_web_server }}"
+  stat:
+    path: "{{ kernel_default_root }}/bitrix"
+  register: bitrix_details
+
+- name: check directory upload exists
+  delegate_to: "{{ cluster_web_server }}"
+  stat:
+    path: "{{ kernel_default_root }}/upload"
+  register: upload_details
+
+- name: check directory images exists
+  delegate_to: "{{ cluster_web_server }}"
+  stat:
+    path: "{{ kernel_default_root }}/images"
+  register: images_details
+
+- fail:
+    msg: "There are no directory {{ kernel_default_root }}/bitrix"
+  when: not bitrix_details.stat.exists|bool
+
+- fail:
+    msg: "There are no directory {{ kernel_default_root }}/upload"
+  when: not upload_details.stat.exists|bool
+
+- debug:
+    msg: "There are no directory {{ kernel_default_root }}/images"
+  when: not images_details.stat.exists|bool
+
+# create site directories on all web servers in the pool
+#
+#- name: test cp1251 locale
+#  shell: "locale -a | grep ru_RU.cp1251 -ic"
+#  register: locale_cmd
+#  ignore_errors: true
+#  when: "kernel_default_charset == 'windows-1251'"
+#
+#- name: ensure locale exists
+#  shell: localedef -c -i ru_RU -f CP1251 ru_RU.CP1251
+#  when: kernel_default_charset == 'windows-1251' and locale_cmd.stdout == "0"
+#
+- include_tasks: create_basic_dirs.yml
+
+- name: create folder for temporary files
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ site_bitrix }}"
+    group: "{{ site_bitrix }}"
+    mode: 0770
+  loop:
+    - "/home/bitrix/.bx_temp"
+    - "/home/bitrix/.bx_temp/{{ kernel_default_db }}"
+  when: "'bitrix-web' in group_names"
+
+- name: create folder for temporary nginx files
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0770
+  loop:
+    - "/etc/nginx/bx/site_settings"
+    - "/etc/nginx/bx/site_settings/{{ web_site_name }}"
+  when: "'bitrix-web' in group_names"
+
+- name: create symbolic link to bitrix kernel directories
+  file: 
+    dest: "{{ web_site_root_dir }}/{{ item }}"
+    src: "{{ kernel_default_root }}/{{ item }}"
+    state: link
+    owner: "{{ site_bitrix }}"
+    group: "{{ site_bitrix }}"
+  with_items:
+    - bitrix
+    - upload
+  tags: create_site_files
+  when: "'bitrix-web' in group_names"
+
+- name: create symbolic link to images kernel directory
+  file: 
+    dest: "{{ web_site_root_dir }}/images"
+    src: "{{ kernel_default_root }}/images"
+    state: link
+    owner: "{{ site_bitrix }}"
+    group: "{{ site_bitrix }}"
+  tags: create_site_files
+  when: images_details.stat.exists|bool and 'bitrix-web' in group_names
+
+# create csync configuration and sync data for site between nodes for new site
+- include_tasks: create_csync2_site.yml
+  when: "cluster_web_configure == 'enable' and fstype == 'csync'"
+
+- include_tasks: configs_lsyncd_create_site.yml
+  when: "cluster_web_configure == 'enable' and fstype =='lsync'"
+
+# create configs for web services
+- include_tasks: create_web_configs.yml
+  when: "'bitrix-web' in group_names"
+
+- name: create custom nginx config
+  template:
+    src: nginx/bx_temp_link.conf.j2
+    dest: "/etc/nginx/bx/site_settings/{{ web_site_name }}/bx_temp.conf"
+    owner: root
+    group: root
+  notify: restart nginx
+  when: "inventory_hostname == cluster_web_server"
+
+# remove files
+- file: 
+    path: "{{ web_site_root_dir }}/bitrix/.settings.php.crm.orig"
+    state: absent
+  when: "'bitrix-web' in group_names"

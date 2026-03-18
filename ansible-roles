@@ -1,0 +1,12 @@
+# Ansible managed
+# contains information about client groups
+# this file does not allow to create a pool with the master on which the file exists
+hostname            = lzxxvqgcqg.local 
+master_netaddr      = 155.212.130.155
+master              = lzxxvqgcqg.local
+master_port         = 8070
+host_id             = 1773824329_paLdFGaj7r
+host_pass           = lzxxvqgcqg.local_Iv1E7zcOOV
+host_ether          = eth0
+host_netaddr        = 155.212.130.155
+groups              =  bitrix-hosts  bitrix-memcached  bitrix-mgmt  bitrix-mysql  bitrix-pgsql  bitrix-web 

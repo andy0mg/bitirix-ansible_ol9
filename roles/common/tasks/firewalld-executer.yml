@@ -1,0 +1,46 @@
+---
+- name: create temporary file
+  shell: mktemp /tmp/XXXXXX_configure.sh
+  register: tmp_file
+
+# CentOS 7
+- name: install firewalld
+  yum:
+    pkg: firewalld
+    state: latest
+    update_cache: yes
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+- name: stateless sh-script to temporary file
+  template:
+    src: templates/iptables/generate_base-centos7.sh.j2
+    dest: "{{ tmp_file.stdout }}"
+    mode: 0700
+    owner: root
+    group: root
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+# Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+- name: install firewalld
+  dnf:
+    pkg: firewalld
+    state: latest
+    update_cache: yes
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+- name: stateless sh-script to temporary file
+  template:
+    src: templates/iptables/generate_base-centos9.sh.j2
+    dest: "{{ tmp_file.stdout }}"
+    mode: 0700
+    owner: root
+    group: root
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+- name: configure firewalld
+  shell: "bash {{ tmp_file.stdout  }}"
+
+- name: delete temporary file
+  file:
+    path: "{{ tmp_file.stdout }}"
+    state: absent

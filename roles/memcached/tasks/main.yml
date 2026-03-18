@@ -1,0 +1,15 @@
+---
+# role for create or remove memcached service on the server
+# memcached_server=
+# memcached_mange=create|remove|update
+
+- include_tasks: "{{ playbook_dir }}/inc_vars.yml"
+
+- include_tasks: setup.yml
+  when: "memcached_mange == 'update' and 'bitrix-memcached' in group_names"
+
+- include_tasks: create_memcached.yml
+  when: "memcached_mange == 'create' and inventory_hostname == memcached_server"
+  
+- include_tasks: remove_memcached.yml
+  when: "memcached_mange == 'remove' and inventory_hostname == memcached_server"

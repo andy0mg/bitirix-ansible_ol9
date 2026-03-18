@@ -1,0 +1,15 @@
+---
+bx_connect: ipv4
+bx_host: lzxxvqgcqg.local
+bx_hostname: lzxxvqgcqg.local
+bx_netaddr: 155.212.130.155
+bx_netname: lzxxvqgcqg.local
+host_id: 1773824329_paLdFGaj7r
+host_pass: lzxxvqgcqg.local_Iv1E7zcOOV
+iface: eth0
+ifaddr: 155.212.130.155
+iptables_state: stateful
+mysql_replication_role: master
+mysql_serverid: 1
+pgsql_replication_role: master
+pgsql_serverid: 1

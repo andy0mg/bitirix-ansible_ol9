@@ -1,0 +1,102 @@
+---
+# CentOS 7
+- name: configure rabbitmq repository
+  shell: " curl -s https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh | sudo bash"
+  args:
+    chdir: /tmp
+    creates: /etc/yum.repos.d/rabbitmq_rabbitmq-server.repo
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+- name: install rabbitmq-server
+  yum:
+    name: rabbitmq-server
+    state: latest
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+# Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+- name: configure rabbitmq-server repository
+  template:
+    src: rabbitmq_rabbitmq-server.repo.j2
+    dest: /etc/yum.repos.d/rabbitmq_rabbitmq-server.repo
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+- name: install rabbitmq-server
+  dnf:
+    name: rabbitmq-server
+    state: latest
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+- name: create rabbitmq config directory
+  file:
+    path: /etc/rabbitmq
+    state: directory
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+- name: configure rabbitmq service
+  template:
+    src: rabbitmq.conf.j2
+    dest: /etc/rabbitmq/rabbitmq.conf
+
+- name: configure rabbitmq environment
+  template:
+    src: rabbitmq-env.conf.j2
+    dest: /etc/rabbitmq/rabbitmq-env.conf
+
+- name: enabled rabbitmq-server
+  service:
+    name: rabbitmq-server
+    state: started
+    enabled: yes
+
+- name: restart rabbitmq-server
+  service:
+    name: rabbitmq-server
+    state: restarted
+
+- name: enable rabbitmq_management plugin
+  rabbitmq_plugin:
+    names: rabbitmq_management
+    state: enabled
+
+- name: create user root
+  rabbitmq_user:
+    user: root
+    password: "{{ redis_root_password }}"
+    vhost: /
+    configure_priv: .*
+    read_priv: .*
+    write_priv: .*
+
+- name: create user bitrix
+  rabbitmq_user:
+    user: "{{ redis_user }}"
+    password: "{{ redis_password }}"
+    vhost: /
+    configure_priv: .*
+    read_priv: .*
+    write_priv: .*
+    tags: administrator
+
+- name: delete guest user
+  rabbitmq_user:
+    user: guest
+    state: absent
+
+# CentOS 7
+- name: install php package
+  yum:
+    name: php-pecl-amqp
+    state: present
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+# Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+- name: install php package - php-pecl-amqp
+  dnf:
+    name: php-pecl-amqp
+    state: present
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+- name: restart httpd service
+  service:
+    name: httpd
+    state: restarted

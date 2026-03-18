@@ -1,0 +1,51 @@
+---
+# downgrade php package from 7.0 version to 5.6
+# 3. configure remi repo (php56)
+# 4. downgrade php version
+# 5. change httpd settings and php.d settings (Centos 6)
+# create list bx_sites_info
+- include_tasks: sites-gathering_facts-not_mandatory.yml
+
+# configure and upgrade remi
+- name: save list php disabled modules
+  bx_php: action=safe70
+  tags: php56
+
+- include_tasks: configure_remi_php56.yml
+
+- include_tasks: reinstall_php.yml
+  vars:
+    is_php56: true
+    is_php71: false
+
+- name: disable additional modules
+  shell: "[ -f /etc/php.d/{{ item }} ] && mv -f /etc/php.d/{{ item }} /etc/php.d/{{ item  }}.disabled && touch /etc/php.d/{{ item  }}"
+  args:
+    executable: /bin/bash
+  with_items:
+    - 20-mssql.ini
+    - 40-xhprof.ini
+    - 20-sodium.ini
+  ignore_errors: True
+
+- name: restore list php disabled modules
+  bx_php: action=restore56
+  tags: php56
+
+- name: enable additional modules
+  shell: "[ -f /etc/php.d/{{ item }}.disabled ] && mv -f /etc/php.d/{{ item }}.disabled /etc/php.d/{{ item  }}"
+  args:
+    executable: /bin/bash
+  with_items:
+    - 20-pdo.ini
+  ignore_errors: True
+
+# configure apache service
+- include_tasks: configure_httpd_php56.yml
+
+- include_tasks: php_ext_dublicates.yml
+
+- name: restart httpd
+  service:
+    name=httpd
+    state=restarted

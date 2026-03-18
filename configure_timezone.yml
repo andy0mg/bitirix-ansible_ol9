@@ -1,0 +1,198 @@
+---
+########### change timezone for hosts in group bitrix-hosts
+# timezone_string=
+# timezone_default=
+###########
+# priority sequence from smallest to largest
+# timezone_default -> timezone_settings_on_master -> timezone_string
+- name: configure timezone
+  hosts: bitrix-hosts
+  vars:
+    timezone_string: NOT_DEFINED
+    timezone_default: UTC
+    timezone_php_update: update
+  handlers:
+    - name: restart httpd
+      service:
+        name: httpd
+        state: restarted
+      tags: httpd
+
+    - name: restart mysqld
+      service:
+        name: mysqld
+        state: restarted
+      tags: mysqld
+  tasks:
+    - name: include variables from temporary config
+      include_vars: "{{ ansible_playbook_file }}"
+      when: "ansible_playbook_file != 'NOT_DEFINED'"
+
+    - name: gather facts about localhost/manager
+      delegate_to: localhost
+      time_facts:
+        option: status
+      tags: time_facts
+      when: "timezone_string == 'NOT_DEFINED'"
+
+    - name: set variables by facts from localhost/manager
+      set_fact:
+        bx_tz: "{{ hostvars[inventory_hostname]['tz'] }}"
+        bx_tz_is_default: "{{ hostvars[inventory_hostname]['tz_default'] }}"
+        bx_tz_php: "{{ hostvars[inventory_hostname]['tz_php'] }}"
+      tags: time_facts
+      when: "timezone_string == 'NOT_DEFINED'"
+
+    - name: set variables by options from command line
+      set_fact:
+        bx_tz: "{{ timezone_string }}"
+        bx_tz_is_default: 'False'
+        bx_tz_php: "not_defined"
+      tags: time_facts
+      when: "timezone_string != 'NOT_DEFINED'"
+
+    - name: output debug information - env options
+      debug:
+        msg: "Time will be updated on bitrix-hosts by timezone={{ bx_tz }}; default={{ bx_tz_is_default }} php_time={{ bx_tz_php }}"
+      tags: time_facts
+
+    - name: output debug information - cmd options
+      debug:
+        msg: "timezone_string={{ timezone_string }} timezone_php_update={{ timezone_php_update }}"
+
+    # /etc/sysconfig/clock file controls the interpretation of values read from the system hardware clock
+    - name: update file /etc/sysconfig/clock
+      template:
+        src: templates/sysconfig-clock.j2
+        dest: /etc/sysconfig/clock
+        owner: root
+        group: root
+        mode: 0644
+      tags: time_configure
+      notify: restart mysqld
+
+    # /etc/localtime file configures the system-wide timezone of the local system that is used by applications for presentation to the user
+    - name: remove file /etc/localtime
+      file:
+        path: /etc/localtime
+        state: absent
+      tags: time_configure
+      notify: restart mysqld
+
+    - name: create link /etc/localtime to defined timezone
+      file:
+        src: /usr/share/zoneinfo/{{ bx_tz }}
+        dest: /etc/localtime
+        state: link
+        force: yes
+      tags: time_configure
+      notify: restart mysqld
+
+    # configure nptd service for CentOS 7
+    - name: install packages for ntp services
+      yum:
+        pkg: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - ntp
+          - ntpdate
+      tags: ntpd_configure
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+    - name: enable ntpd service
+      service:
+        name: ntpd
+        state: started
+        enabled: yes
+      tags: ntpd_configure
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+    - name: restart ntpd service
+      service:
+        name: ntpd
+        state: restarted
+      tags: ntpd_configure
+      when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+    # configure chronyd service for Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+    - name: install packages for chronyd services
+      dnf:
+        pkg: "{{ packages }}"
+        state: present
+      vars:
+        packages:
+          - chrony
+      tags: chronyd_configure
+      when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+    - name: enable chronyd service
+      service:
+        name: chronyd
+        state: started
+        enabled: yes
+      tags: chronyd_configure
+      when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+    - name: restart chronyd service
+      service:
+        name: chronyd
+        state: restarted
+      tags: chronyd_configure
+      when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+    - name: create update time string
+      shell: date +"%Y-%m-%d %H:%M:%S"
+      register: phpupdate_date
+      when: "'bitrix-web' in group_names and bx_tz != bx_tz_php"
+
+    - name: delete artifacts from /etc/php.d/bitrixenv.ini
+      lineinfile:
+        dest: /etc/php.d/bitrixenv.ini
+        state: absent
+        regexp: ' by ansible manager at '
+      tags: php_configure
+      notify: restart httpd
+      when: "'bitrix-web' in group_names and bx_tz != bx_tz_php"
+
+    - name: update /etc/php.d/bitrixenv.ini - ansible comment
+      lineinfile:
+        dest: /etc/php.d/bitrixenv.ini
+        state: present
+        regexp: 'date.timezone'
+        line: ';set timezone={{ bx_tz }} by ansible manager at {{ phpupdate_date.stdout }}'
+      tags: php_configure
+      notify: restart httpd
+      when: "'bitrix-web' in group_names and bx_tz != bx_tz_php"
+
+    - name: update /etc/php.d/bitrixenv.ini - time string
+      lineinfile:
+        dest: /etc/php.d/bitrixenv.ini
+        state: present
+        regexp: 'date.timezone'
+        line: 'date.timezone = {{ bx_tz }}'
+      tags: php_configure
+      notify: restart httpd
+      when: "'bitrix-web' in group_names and bx_tz != bx_tz_php"
+
+    - name: restart system services
+      service:
+        name: "{{ item }}"
+        state: restarted
+      with_items:
+        - rsyslog
+        - crond
+      tags: service
+
+    - name: update timezone settings in postgresql.conf
+      replace:
+        path: "/var/lib/pgsql/data/postgresql.conf"
+        regexp: "^(\\s*)(timezone|log_timezone)\\s*=\\s*['\"]?[^'\"#]*['\"]?"
+        replace: "\\1\\2 = '{{ bx_tz }}'"
+
+
+    - name: restart postgresql
+      service:
+        name: postgresql
+        state: restarted
+      tags: postgresql

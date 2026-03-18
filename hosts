@@ -1,0 +1,22 @@
+# Bitrix VM default configuration group
+[bitrix-hosts]
+lzxxvqgcqg.local   ansible_connection=local ansible_ssh_host=155.212.130.155
+
+[bitrix-mgmt]
+lzxxvqgcqg.local   ansible_connection=local ansible_ssh_host=155.212.130.155
+
+[bitrix-web]
+lzxxvqgcqg.local   ansible_connection=local ansible_ssh_host=155.212.130.155
+
+[bitrix-mysql]
+lzxxvqgcqg.local   ansible_connection=local ansible_ssh_host=155.212.130.155
+
+[bitrix-pgsql]
+lzxxvqgcqg.local   ansible_connection=local ansible_ssh_host=155.212.130.155
+
+[bitrix-memcached]
+lzxxvqgcqg.local ansible_ssh_host=155.212.130.155
+
+[bitrix-sphinx]
+
+[bitrix-push]

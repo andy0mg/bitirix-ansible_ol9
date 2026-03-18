@@ -1,0 +1,192 @@
+---
+- name: ntlm_pass variable
+  set_fact:
+    ntlm_pass: "{{ lookup('file', ntlm_pass_file) }}"
+
+# configure winbind (samba, kerberos and etc.)
+
+# CentOS 6
+- name: remove samba packages on CentOS 6
+  yum:
+    name: "{{ packages }}"
+    state: absent
+  vars:
+    packages:
+      - samba
+      - samba-winbind
+      - samba-common
+      - samba-client
+      - samba-winbind-clients
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+- name: install samba4 packages on Centos6
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+      - samba4
+      - samba4-winbind
+      - samba4-common
+      - samba4-client
+      - samba4-winbind-clients
+      - mod_auth_ntlm_winbind
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '6'
+
+# CentOS 7
+- name: install samba packages CentOS 7
+  yum:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+      - samba
+      - samba-winbind
+      - samba-common
+      - samba-client
+      - samba-winbind-clients
+      - mod_auth_ntlm_winbind
+  when: ansible_distribution == 'CentOS' and ansible_distribution_major_version == '7'
+
+# Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+- name: install samba packages
+  dnf:
+    name: "{{ packages }}"
+    state: latest
+  vars:
+    packages:
+      - samba
+      - samba-winbind
+      - samba-common
+      - samba-client
+      - samba-winbind-clients
+      - bx-mod_auth_ntlm_winbind
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+#  "domain_status": "configured",
+#  "kdc": "192.168.0.230",
+#  "ldap_server": "192.168.0.230",
+#  "ldap_server_name": "TEST-DC-SP.TEST.local",
+#  "nss_status": "configured",
+#  "offset": "-26",
+#  "realm": "TEST.LOCAL"
+- name: get current winbind status
+  bx_ntlm:
+
+- name: shutdown smb and winbind service
+  when: domain_status == 'configured'
+  with_items:
+    - winbind
+    - smb
+  service:
+    name: "{{ item }}"
+    state: stopped
+
+- name: delete cache files from samba
+  when: domain_status == 'configured'
+  with_items:
+    - serverid.tdb
+    - winbindd_cache.tdb
+    - winbindd_idmap.tdb
+    - winbindd_privileged/pipe
+  file:
+    path: "/var/lib/samba/{{ item }}"
+    state: "absent"
+
+- name: create samba config
+  template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+
+- name: create kerberos config
+  template:
+    src: krb5.conf.j2
+    dest: /etc/krb5.conf
+
+- name: update login sources in /etc/nsswitch.conf
+  lineinfile:
+    dest: /etc/nsswitch.conf
+    regexp: '^passwd:'
+    line: 'passwd: compat winbind'
+
+- name: update group sources in /etc/nsswitch.conf
+  lineinfile:
+    dest: /etc/nsswitch.conf
+    regexp: '^group:'
+    line: 'group: compat winbind'
+
+- name: update password sources in /etc/nsswitch.conf
+  lineinfile:
+    dest: /etc/nsswitch.conf
+    regexp: '^shadow:'
+    line: 'shadow: compat'
+
+- name: update domain in /etc/resolv.conf - search
+  lineinfile:
+    dest: /etc/resolv.conf
+    regexp: '^search\s+'
+    line: "search {{ ntlm_fqdn }}"
+    state: present
+
+- name: update domain in /etc/resolv.conf - domain
+  lineinfile:
+    dest: /etc/resolv.conf
+    regexp: '^domain\s+'
+    line: "domain {{ ntlm_fqdn }}"
+    state: present
+
+- name: add bitrix to wbpriv group
+  user:
+    append: yes
+    groups: wbpriv
+    name: bitrix
+
+- name: generate file name for temporary save admin settings
+  set_fact:
+    join_file: "/opt/webdir/generator/{{ lookup('password', '/tmp/generator_file chars=ascii_letters,digits length=20') }}"
+
+- name: temp directory
+  file:
+    path: /opt/webdir/generator
+    state: directory
+    mode: 0700
+
+- name: save password info to the temprorary file
+  template:
+    src: options/ntlm_join.j2
+    dest: "{{ join_file }}"
+    mode: 0400
+
+- name: join the ADS domain
+  bx_ntlm:
+    state: join
+    safe_file: "{{ join_file }}"
+
+- name: enable services smb and winbind in the system
+  service:
+    name: "{{ item }}"
+    state: started
+    enabled: yes
+  with_items:
+    - smb
+    - winbind
+
+- name: restart all working services
+  service:
+    name: "{{ item }}"
+    state: restarted
+  with_items:
+    - smb
+    - winbind
+    - nginx
+    - httpd
+
+- name: delete generator file
+  file:
+    path: /tmp/generator_file
+    state: absent
+
+- name: delete ntlm temprorary file
+  file:
+    path: "{{ join_file }}"
+    state: absent

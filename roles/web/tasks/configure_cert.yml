@@ -1,0 +1,52 @@
+---
+# configure own certificates
+# site_name: - bitrix site names
+# certificate: - path to certificate
+# certificate_chain: - path to certificate chain
+# private_key: - path to private key
+
+- name: test certificate and private key
+  bx_cert:
+    cert: "{{ certificate }}"
+    priv: "{{ private_key }}"
+  when: certificate_chain is undefined
+
+- name: test certificate, private key and chain
+  bx_cert:
+    cert: "{{ certificate }}"
+    priv: "{{ private_key }}"
+    chain: "{{ certificate_chain }}"
+  when: certificate_chain is defined
+
+- name: create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    force: yes
+    recurse: yes
+    mode: 0750
+  with_items:
+    - /etc/nginx/certs
+
+- name: update ssl_options
+  template:
+    src: nginx/ssl_options.conf.j2
+    dest: /etc/nginx/bx/conf/ssl_options.conf
+
+- include_tasks: configure_cert_per_sites.yml
+  when: sites_cnt > 0
+
+#- include_tasks: configure_cert_push_server.yml
+#  when: push_server is defined and push_server > 0
+
+- name: reload nginx
+  service: 
+    name: nginx
+    state: reloaded
+
+- name: reload httpd
+  service: 
+    name: httpd
+    state: reloaded

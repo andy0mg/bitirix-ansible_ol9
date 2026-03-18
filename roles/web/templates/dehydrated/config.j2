@@ -1,0 +1,15 @@
+{% if dehydrated_type == 'prod' %}
+CA="https://acme-v02.api.letsencrypt.org/directory"
+{% else %}
+CA="https://acme-staging-v02.api.letsencrypt.org/directory"
+{% endif %}
+WELLKNOWN="/var/www/dehydrated"
+KEYSIZE="4096"
+{% if dehydrated_type == 'prod' %}
+RENEW_DAYS="20"
+{% else %}
+RENEW_DAYS="100"
+{% endif %}
+KEY_ALGO=rsa
+CONTACT_EMAIL="{{ email }}"
+HOOK="${BASEDIR}/hook.sh"

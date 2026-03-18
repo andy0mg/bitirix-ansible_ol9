@@ -1,0 +1,201 @@
+---
+# This role contains common plays that will run on all nodes in bitrix-hosts
+#
+# collect information on the current network configuration servers
+- name: gathring facts about intreface and ip addreess
+  bx_net:
+    bx_netaddr: "{{ bx_netaddr }}"
+  tags: net_configs
+
+- name: gathring facts about host
+  bx_generate_host_vars: "host_name={{ inventory_hostname }}
+    host_id={{ host_id |default('NOT_DEFINED') }}
+    host_pass={{ host_pass | default('NOT_DEFINED') }}
+    bx_netname={{ bx_netname | default('NOT_DEFINED') }}"
+  tags: host_configs
+
+- name: set variables for client IP and interfaces
+  set_fact:
+    bx_ether_client: "{{ hostvars[inventory_hostname]['bx_network']['interface'] }}"
+    bx_netaddr_client: "{{ bx_netaddr }}"
+    bx_netaddr_server: "{{ monitoring_server_netaddr }}"
+    bx_hostname_server: "{{ monitoring_server }}"
+  tags: net_configs
+
+- name: debug info
+  debug: msg="bx_ether_client={{ bx_ether_client }}
+    bx_netaddr_client={{ bx_netaddr_client }}
+    bx_netaddr_server={{ bx_netaddr_server }}
+    host_id={{ host_id }}
+    host_pass={{ host_pass }}
+    bx_netname={{ bx_netname }}
+    bx_host={{ bx_host| default(bx_hostname) }}"
+  tags: net_configs
+
+# install packages (if add old machine)
+- name: install packages on CentOS 7
+  yum:
+    pkg: "{{ packages }}"
+    state: latest
+    update_cache: yes
+  vars:
+    packages:
+      - etckeeper
+      - bzip2
+      - psmisc
+  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+# Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+- name: install packages
+  dnf:
+    pkg: "{{ packages }}"
+    state: latest
+    update_cache: yes
+  vars:
+    packages:
+      - etckeeper
+      - bzip2
+      - psmisc
+      - procps-ng
+  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+# virtualization
+- name: configure virtualization type
+  set_fact:
+    virtualization_type: "{{ ansible_virtualization_type|default('unknown') }}"
+
+# iptables/firewalld settings
+- include_tasks: configure_firewall_service.yml
+  when: configure_firewall
+
+# hostname and network settings
+- include_tasks: hostnames.yml
+  vars: 
+    hostname: "{{ inventory_hostname }}"
+  when: bx_host is undefined
+
+- include_tasks: hostnames.yml
+  vars:
+    hostname: "{{ bx_host }}"
+  when: bx_host is defined
+
+# sudoers
+#
+#- name: update sudoers
+#  template:
+#    src=bitrix_hosts.j2
+#    dest=/etc/sudoers.d/bitrix_hosts
+#    mode=0440
+#    owner=root
+#  tags: sudoers
+#
+#- name: delete BXANSIBLE
+#  lineinfile:
+#    dest=/etc/sudoers.d/bitrix
+#    regexp="BXANSIBLE"
+#    state=absent
+#  tags: sudoers
+#
+
+# client configuration 
+- name: pool information for child
+  template:
+    src: ansible-roles.j2
+    dest: /etc/ansible/ansible-roles
+    owner: root
+    group: root
+    mode: 0640
+  tags: pool_configuration
+
+- name: configuration profile.d
+  template:
+    src: profiled-bitrix.sh.j2
+    dest: /etc/profile.d/bitrix.sh
+    owner: root
+    group: root
+    mode: 0644
+  tags: profile
+
+- name: update host config by ether and netaddr
+  delegate_to: 127.0.0.1
+  bx_conf: "hostname={{ inventory_hostname }}
+    state=update
+    bx_netaddr={{ bx_netaddr_client }}
+    iface={{ bx_ether_client }}
+    ifaddr={{ bx_netaddr_client }}
+    host_id={{ host_id }}
+    host_pass={{ host_pass }}
+    bx_netname={{ bx_netname }}"
+  tags: network
+
+# time settings
+- include_tasks: time.yml
+
+# mysql
+- include_tasks: mysql.yml
+
+# nginx configuration for master server
+- name: configure nginx server
+  template:
+    src: pool_manager.conf.j2
+    dest: /etc/nginx/bx/site_avaliable/pool_manager.conf
+    owner: root
+    group: root
+    mode: 0644
+  tags: nginx
+  when: inventory_hostname == monitoring_server
+  notify: restart nginx
+
+- name: enable config for nginx
+  file:
+    src: /etc/nginx/bx/site_avaliable/pool_manager.conf
+    dest: /etc/nginx/bx/site_enabled/pool_manager.conf
+    state: link
+  tags: nginx
+  when: inventory_hostname == monitoring_server
+  notify: restart nginx
+
+- name: create http password file
+  delegate_to: 127.0.0.1
+  shell: htpasswd -c -b {{ pool_passwords }} {{ host_id }} {{ host_pass }}
+  #htpasswd:
+  #path: "{{ pool_passwords }}"
+  #name: "{{ host_id }}"
+  #password: "{{ host_pass }}"
+  #state: present
+  #create: yes
+  tags: nginx
+  notify: restart nginx
+
+- name: create certificate file
+  shell: openssl req -new -x509 -days 3650 -nodes -out {{ pool_certificate }} -keyout {{ pool_certificate}} -config /etc/nginx/openssl.cnf creates={{ pool_certificate }}
+  tags: nginx
+  when: inventory_hostname == monitoring_server
+
+- name: set access rights for nginx configs
+  file:
+    path: "{{ item }}"
+    owner: root
+    group: root
+    mode: 0640
+  with_items:
+   - "{{ pool_certificate }}"
+   - "{{ pool_passwords }}"
+  tags: nginx
+  when: inventory_hostname == monitoring_server
+
+- name: create cron task for update network settings on client
+  template:
+    src: cron-bx_network_updater.j2
+    dest: /etc/cron.d/bx_network_updater
+    owner: root
+    group: root
+    mode: 0644
+  tags: network
+  when: inventory_hostname == monitoring_server
+
+- name: test system files and create backup crontask for clients
+  shell: /opt/webdir/bin/update_network.sh
+
+# etckeeper configuration
+- include_tasks: etckeeper.yml

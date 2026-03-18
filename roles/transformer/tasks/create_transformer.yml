@@ -1,0 +1,51 @@
+---
+# CentOS 7
+- name: update system
+  yum:
+    name: '*'
+    state: latest
+  when: inventory_hostname == transformer_host and ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+# Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+- name: update system
+  dnf:
+    name: '*'
+    state: latest
+  when: inventory_hostname == transformer_host and (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
+
+# test site information
+- include_tasks: gather_site_info.yml
+  when: inventory_hostname == transformer_host and not (transformer_standalone | bool)
+
+# Erlang
+- include_tasks: configure_erlang.yml
+  when: inventory_hostname == transformer_host
+
+# RabbitMQ
+- include_tasks: configure_rabbitmq.yml
+  when: inventory_hostname == transformer_host
+
+# LibreOffice
+- include_tasks: configure_libreoffice.yml
+  when: inventory_hostname == transformer_host
+
+# Ffmpeg
+- include_tasks: configure_ffmpeg.yml
+  when: inventory_hostname == transformer_host
+
+# Copy Files
+- include_tasks: configure_sync_docroot.yml
+  when: (transformer_host != cluster_web_server) and ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+
+# Configure worker service
+- include_tasks: configure_transformer_worker.yml
+  when: inventory_hostname == transformer_host
+
+# Update /etc/hosts
+- name: update hosts file
+  lineinfile:
+    path: /etc/hosts
+    insertbefore: "ANSIBLE MANAGED BLOCK"
+    firstmatch: yes
+    line: "{{ cluster_web_netaddr }} {{ web_site_name }}"
+  when: not (transformer_standalone | bool)

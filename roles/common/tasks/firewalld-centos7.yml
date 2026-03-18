@@ -1,0 +1,7 @@
+---
+- include_tasks: firewalld-executer.yml
+
+- service:
+    name: firewalld
+    enabled: yes
+    state: started

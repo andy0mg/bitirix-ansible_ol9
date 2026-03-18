@@ -1,0 +1,26 @@
+---
+# add web role to the server at one step
+- include_tasks: sites-gathering_facts-all.yml
+
+- include_tasks: sites-checks.yml
+
+# commit current configuration
+- include_tasks: common-etckeeper.yml
+  vars: 
+    task_type: "add_web_{{ new_web_server }}"  
+
+# initial sync data from balancer to backend
+- include_tasks: sites_synchronize.yml
+  when: "inventory_hostname == new_web_server or inventory_hostname == cluster_web_server"
+
+# configure csync2
+- include_tasks: configure_csync.yml
+  when: "fstype == 'csync'"
+
+# configure lsync
+- include_tasks: configure_lsync.yml
+  when: "fstype == 'lsync'"
+
+# save settings to ansible inventory
+- include_tasks: sites_inventory-web1.yml
+  when: "inventory_hostname == new_web_server"

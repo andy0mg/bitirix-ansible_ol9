@@ -1,0 +1,4 @@
+---
+- name: delete unnecessary configuration files
+  bx_php_extension:
+    state: duplicates

@@ -1,0 +1,84 @@
+---
+# add web role to the server at one step
+- include_tasks: sites-gathering_facts-all.yml
+
+- include_tasks: sites-checks.yml
+
+- name: cluster variables
+  set_fact:
+    cluster_web_configure: enable
+    mysql_playbook: cluster
+
+# commit current configuration
+- include_tasks: common-etckeeper.yml
+  vars: 
+    task_type: "add_web_configs_{{ new_web_server }}"  
+
+- name: cluster password
+  set_fact:
+    cluster_password: "{{ lookup('file', cluster_password_file) }}"
+  when: cluster_password_file is defined
+  tags: vars
+  
+- name: replica password
+  set_fact:
+    replica_password: "{{ lookup('file', replica_password_file) }}"
+  when: replica_password_file is defined
+  tags: vars
+
+- include_tasks: mysql-setup.yml
+  when: "inventory_hostname == new_web_server"
+
+- include_tasks: spare-crontab-setup.yml
+  when: "inventory_hostname == new_web_server"
+
+# wait until lsyncd service sync data from balancer to other hosts
+- name: check lsyncd delay
+  bx_lsyncd_wait:
+    log=/var/log/lsyncd/daemon-{{ inventory_hostname }}.status
+    attempts=20
+    timeout=60
+  delegate_to: "{{ cluster_web_server }}"
+  when: "fstype == 'lsync' and inventory_hostname == new_web_server"
+
+# update site's config: dbconn.php and .settings.php - use cluster login and password
+- include_tasks: sites_mysql_connect.yml
+  when: "inventory_hostname == cluster_web_server"
+
+# configure nginx and apache: balancer and backends configs
+- include_tasks: web_services-setup.yml
+  when: "inventory_hostname == cluster_web_server"
+
+# register web nodes on sites
+- include_tasks: sites-cache_directory-execute.yml
+  vars:
+    php_script: add_web_node_on_cluster.php
+    php_server: "{{ cluster_web_server }}"
+  when: "inventory_hostname == new_web_server or 'bitrix-web' in group_names"
+
+# save settings to ansible inventory
+- include_tasks: sites_inventory-web2.yml
+  when: "inventory_hostname == new_web_server"
+
+# restart web services
+- name: restart web-services
+  service:
+    name={{ item }}
+    state=restarted
+  tags: web
+  with_items:
+    - nginx
+    - httpd
+  when: "'bitrix-web' in group_names or inventory_hostname == new_web_server"
+
+# enable service
+- name: start lsyncd backend service on new host
+  service:
+    name=lsyncd-{{ cluster_web_server }}
+    state=started
+    enabled=yes
+  when: "fstype == 'lsync' and inventory_hostname == new_web_server"
+
+# configure monitoring
+- include_tasks: monitoring_web.yml
+  when: "monitoring_status == 'enable' and inventory_hostname == new_web_server"

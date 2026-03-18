@@ -1,0 +1,87 @@
+---
+# configure Let's Encrypt certificates
+# dns_names: - array for domain names
+# email: email address
+# site_name: - bitrix site names
+
+- include_tasks: sites-gathering_facts_site_names.yml
+
+- debug:
+    msg: "{{ bx_sites_info }}"
+
+- name: set cluster mark to disabled state
+  set_fact:
+    is_cluster: "disable"
+
+- name: change cluster mark if web cluster configured
+  set_fact:
+    is_cluster: "enable"
+  when: "cluster_web_configure == 'enable'"
+
+- name: download dehydrated
+  git: 
+    repo: "https://github.com/lukas2511/dehydrated.git"
+    dest: /home/bitrix/dehydrated
+    clone: yes
+    update: yes
+
+- name: create directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: bitrix
+    group: bitrix
+    force: yes
+    recurse: yes
+  with_items:
+    - /home/bitrix/dehydrated
+    - /var/www/dehydrated
+
+- name: add dehydrated dir as safe directory global git option in .gitconfig
+  community.general.git_config:
+    repo: "https://github.com/lukas2511/dehydrated.git"
+    state: present
+    scope: global
+    name: safe.directory
+    value: "/home/bitrix/dehydrated"
+
+- name: create nginx LE config
+  template:
+    src: nginx/letsencrypt-challenge-tokens.conf.j2
+    dest: /etc/nginx/bx/conf/letsencrypt-challenge-tokens.conf
+
+- name: create nginx SSL options config
+  template:
+    src: nginx/ssl_options.conf.j2
+    dest: /etc/nginx/bx/conf/ssl_options.conf
+
+- include_tasks: configure_le_location_per_site.yml
+  when: is_cluster == 'disable' and sites_cnt > 0
+
+- include_tasks: configure_le_location_on_balancer.yml
+  when: is_cluster == 'enable' and sites_cnt > 0
+
+- name: restart nginx
+  service: 
+    name: nginx
+    state: restarted
+
+- include_tasks: dehydrated.yml
+  vars:
+    dehydrated_type: "prod"
+
+- include_tasks: configure_le_certificates_per_site.yml
+  when: sites_cnt > 0
+
+#- include_tasks: configure_nginx_push_server.yml
+#  when: push_server is defined and push_server > 0
+
+- name: reload nginx
+  service: 
+    name: nginx
+    state: reloaded
+
+- name: reload httpd
+  service: 
+    name: httpd
+    state: reloaded

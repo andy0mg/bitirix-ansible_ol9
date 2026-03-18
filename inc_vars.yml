@@ -1,0 +1,13 @@
+---
+- name: include variables from mysql group
+  include_vars: "{{ playbook_dir }}/group_vars/bitrix-mysql.yml"
+
+- name: include variables from postgresql group
+  include_vars: "{{ playbook_dir }}/group_vars/bitrix-pgsql.yml"
+  
+- name: include variables from web group
+  include_vars: "{{ playbook_dir }}/group_vars/bitrix-web.yml"
+
+- name: include variables from temporary config
+  include_vars: "{{ ansible_playbook_file }}"
+  when: "ansible_playbook_file != 'NOT_DEFINED'"

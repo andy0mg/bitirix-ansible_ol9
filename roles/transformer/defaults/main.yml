@@ -1,0 +1,30 @@
+---
+# CentOS 7
+#libreoffice_version: 6.4.4
+#libreoffice_name: "LibreOffice_{{ libreoffice_version   }}_Linux_x86-64_rpm"
+#libreoffice_file: "{{ libreoffice_name }}.tar.gz"
+#libreoffice_url: "https://repo.bitrix.info/sources/{{ libreoffice_file }}"
+
+# Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
+
+#libreoffice_version: 24.8.2
+#libreoffice_name: "LibreOffice_{{ libreoffice_version }}_Linux_x86-64_rpm"
+#libreoffice_file: "{{ libreoffice_name }}.tar.gz"
+#libreoffice_url: "https://repo.bitrix.info/sources/{{ libreoffice_file }}"
+
+libreoffice_version: 25.2.7.2
+libreoffice_name: "LibreOffice_{{ libreoffice_version }}_Linux_x86-64_rpm"
+libreoffice_file: "{{ libreoffice_name }}.tar.gz"
+libreoffice_url: "https://repo.bitrix.info/sources/{{ libreoffice_file }}"
+
+is_create: false
+is_remove: false
+
+# If true, install packages/services only (no Bitrix site integration).
+transformer_standalone: false
+
+redis_user: bitrix
+bx_ansible_owner: bitrix
+cache_directory: /opt/webdir/tmp
+bx_ansible_group: bitrix
+bx_ansible_executer: bitrix

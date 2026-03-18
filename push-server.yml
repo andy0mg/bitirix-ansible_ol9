@@ -1,0 +1,20 @@
+---
+# This playbook configure RTC server
+# manage_node: node when rtc created or deleted
+# rtc_type: nodejs only
+- hosts: bitrix-hosts
+  vars:
+    # Standalone-friendly defaults
+    manage: configure_nodejs
+    hostname: "{{ inventory_hostname }}"
+    push_server: "{{ inventory_hostname }}"
+    # On a "clean" machine there is usually no Bitrix web cluster to integrate with.
+    push_server_configure_web: false
+  roles:
+    - "push-server"
+
+- hosts: bitrix-hosts
+  vars:
+    cache_directory: /opt/webdir/tmp
+  roles:
+    - cleaner

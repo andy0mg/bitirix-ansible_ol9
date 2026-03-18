@@ -1,0 +1,5 @@
+.ssh/
+.ansible/
+*.retry
+__pycache__/
+.DS_Store

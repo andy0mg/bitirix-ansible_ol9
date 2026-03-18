@@ -1,0 +1,6 @@
+---
+- include_tasks: remove_nodjs_push-server.yml
+  when: "inventory_hostname == push_server"
+
+- include_tasks: configure_nodjs_push-server.yml
+  when: "inventory_hostname == hostname"
