@@ -13,7 +13,8 @@ export PATH=/sbin:/bin:/usr/sbin:/usr/bin
 [[ -z $DEBUG ]] && DEBUG=0
 MYSQL_CNF=/root/.my.cnf
 TMP_DIR=/opt/webdir/tmp
-[[ ! -d $TMP_DIR ]] && mkdir -m 700 $TMP_DIR
+# On a clean machine /opt/webdir may not exist yet.
+[[ ! -d $TMP_DIR ]] && mkdir -p -m 700 "$TMP_DIR"
 LOG_FILE=$TMP_DIR/bx_vat_$$.log
 
 debug() {
