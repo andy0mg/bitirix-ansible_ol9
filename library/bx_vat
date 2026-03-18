@@ -454,6 +454,18 @@ get_bx_packages() {
     # os and version
     get_os_version
     [[ -z "$rpm_bin" ]] && return 1
+    # Defaults for clean systems (keep JSON valid even if we exit early)
+    php_version=not_installed
+    php_union_version=0
+    php_upgraded_version_str="[]"
+    php_rollback_versions_str="[]"
+    is_older_version_php=0
+    php_mysql_ext="not_installed"
+    postgresql_service_status=not_installed
+    postgresql_package=not_installed
+    postgresql_service=not_installed
+    postgresql_version=not_installed
+    postgresql_uni_version=not_installed
     if [[ -n $rpm_bin ]]; then
         # get mysql package info
         get_mysql_package
@@ -464,8 +476,11 @@ get_bx_packages() {
         mysql_uni_version=$MYSQL_UNI_VERSION
         get_postgresql_package
         get_postgresql_service_status
-        [[ $? -gt 0 ]] && return 0
-        postgresql_service_status=active
+        if [[ $? -eq 0 ]]; then
+            postgresql_service_status=active
+        else
+            postgresql_service_status=not_active
+        fi
         postgresql_package=$POSTGRESQL_PACKAGE
         postgresql_service=$POSTGRESQL_SERVICE
         postgresql_version=$POSTGRESQL_VERSION
