@@ -139,14 +139,17 @@ get_bx_user_password() {
         debug "Found user $bx_user in the system"
         chage -l $bx_user > $chage_data 2>&1
         if [[ $? -gt 0 ]]; then
-            echo "{\"changed\":false,\"failed\":true,\"msg\":\"cmd return error\"}"
-            debug "\"chage -l $bx_user return error\""
-            rm -f $chage_data
-            exit 1
+            # On some systems chage can fail (for example, missing shadow info).
+            # Treat this as "no password info" instead of failing the whole module.
+            debug "\"chage -l $bx_user return error, ignoring\""
+            Last_password_change=0
+            Password_expires=0
+            Password_inactive=0
+        else
+            Last_password_change=$(awk -F':' '/Last password change/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
+            Password_expires=$(awk -F':' '/Password expires/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
+            Password_inactive=$(awk -F':' '/Password inactive/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
         fi
-        Last_password_change=$(awk -F':' '/Last password change/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
-        Password_expires=$(awk -F':' '/Password expires/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
-        Password_inactive=$(awk -F':' '/Password inactive/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
     else
         Last_password_change=0
         Password_expires=0
@@ -165,14 +168,16 @@ get_bx_root_password() {
         debug "Found user $root_bx_user in the system"
         chage -l $root_bx_user > $chage_data 2>&1
         if [[ $? -gt 0 ]]; then
-            echo "{\"changed\":false,\"failed\":true,\"msg\":\"cmd return error\"}"
-            debug "\"chage -l $root_bx_user return error\""
-            rm -f $chage_data
-            exit 1
+            # Same as for regular user: ignore chage errors and fallback to zeros.
+            debug "\"chage -l $root_bx_user return error, ignoring\""
+            root_Last_password_change=0
+            root_Password_expires=0
+            root_Password_inactive=0
+        else
+            root_Last_password_change=$(awk -F':' '/Last password change/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
+            root_Password_expires=$(awk -F':' '/Password expires/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
+            root_Password_inactive=$(awk -F':' '/Password inactive/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
         fi
-        root_Last_password_change=$(awk -F':' '/Last password change/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
-        root_Password_expires=$(awk -F':' '/Password expires/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
-        root_Password_inactive=$(awk -F':' '/Password inactive/{print $2}' $chage_data| sed 's/^\s\+//;s/\s\+$//;')
     else
         root_Last_password_change=0
         root_Password_expires=0
