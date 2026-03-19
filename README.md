@@ -30,6 +30,12 @@ ansible-playbook -i inventory/hosts nginx-phpfpm.yml
 
 This installs `nginx` and `php-fpm` and creates a demo `index.php` in `/var/www/html`.
 
+## Install nginx + php-fpm (Bitrix PHP extensions, EL9)
+
+```bash
+ansible-playbook -i inventory/hosts bitrix-nginx-phpfpm.yml
+```
+
 ## Install memcached (standalone)
 
 ```bash

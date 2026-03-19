@@ -3,8 +3,7 @@
   dnf:
     name:
       - nginx
-      - php-fpm
-      - php-cli
+      - "{{ standalone_php_packages }}"
     state: present
     update_cache: yes
   when: (ansible_distribution in ["Rocky","AlmaLinux","OracleLinux","CentOS"]) and ansible_distribution_major_version == "9"

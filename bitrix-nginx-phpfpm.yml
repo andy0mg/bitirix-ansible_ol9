@@ -1,0 +1,31 @@
+---
+# Bitrix-oriented nginx + php-fpm stack for EL9 (Oracle Linux 9).
+# This only installs nginx/php/extensions and configures php-fpm socket for nginx.
+# Bitrix application install/config is out of scope here.
+- hosts: bitrix-hosts
+  become: true
+  vars:
+    standalone_web_create_demo: false
+    standalone_php_packages:
+      - php-fpm
+      - php-cli
+      - php-mysqlnd
+      - php-gd
+      - php-mbstring
+      - php-xml
+      - php-intl
+      - php-soap
+      - php-zip
+      - php-bcmath
+      - php-opcache
+      - php-process
+      - php-json
+      - php-curl
+      - php-ldap
+      # Optional but common for Bitrix images/PDF:
+      - php-pecl-imagick
+      # Optional caching/session integrations:
+      - php-pecl-redis5
+  roles:
+    - standalone-web
+

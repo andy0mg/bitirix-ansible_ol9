@@ -14,3 +14,9 @@ standalone_phpfpm_group: nginx
 # nginx listen port
 standalone_nginx_listen: 80
 
+# Extra PHP packages (extensions) to install alongside php-fpm.
+# Override from playbooks for a Bitrix-ready set.
+standalone_php_packages:
+  - php-fpm
+  - php-cli
+
