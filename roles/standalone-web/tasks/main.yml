@@ -1,8 +1,23 @@
 ---
+- name: enable Bitrix yum repo (EL9)
+  template:
+    src: "{{ playbook_dir }}/templates/bitrix.repo.j2"
+    dest: /etc/yum.repos.d/bitrix.repo
+    owner: root
+    group: root
+    mode: 0644
+  when: standalone_use_bitrix_repo | bool
+
+- name: import Bitrix repo GPG key
+  rpm_key:
+    state: present
+    key: https://repo.bitrix.info/yum/RPM-GPG-KEY-BitrixEnv
+  when: standalone_use_bitrix_repo | bool
+
 - name: install nginx and php-fpm (EL9)
   dnf:
     name:
-      - nginx
+      - "{{ standalone_nginx_package }}"
       - "{{ standalone_php_packages }}"
     state: present
     update_cache: yes

@@ -6,6 +6,8 @@
   become: true
   vars:
     standalone_web_create_demo: false
+    standalone_use_bitrix_repo: true
+    standalone_nginx_package: bx-nginx
     standalone_php_packages:
       - php-fpm
       - php-cli

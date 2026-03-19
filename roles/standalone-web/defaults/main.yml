@@ -14,6 +14,13 @@ standalone_phpfpm_group: nginx
 # nginx listen port
 standalone_nginx_listen: 80
 
+# nginx package to install (set to bx-nginx for Bitrix repo)
+standalone_nginx_package: nginx
+
+# Bitrix repository (repo.bitrix.info) for EL9 packages like bx-nginx.
+standalone_use_bitrix_repo: false
+beta_version: disable
+
 # Extra PHP packages (extensions) to install alongside php-fpm.
 # Override from playbooks for a Bitrix-ready set.
 standalone_php_packages:
