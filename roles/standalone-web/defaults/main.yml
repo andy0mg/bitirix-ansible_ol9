@@ -29,3 +29,10 @@ standalone_php_packages:
   - php-fpm
   - php-cli
 
+# Extra non-PHP packages (e.g. msmtp for sendmail_path)
+standalone_web_extra_packages: []
+
+# Optional: php.ini-like directives applied on php-fpm pool (www) level
+# via php_admin_value/php_value in /etc/php-fpm.d/www.conf.
+standalone_phpfpm_pool_ini: {}
+

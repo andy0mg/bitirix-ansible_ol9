@@ -16,7 +16,7 @@
 
 - name: install nginx and php-fpm (EL9)
   dnf:
-    name: "{{ [standalone_nginx_package] + (standalone_php_packages | list) }}"
+    name: "{{ [standalone_nginx_package] + (standalone_php_packages | list) + (standalone_web_extra_packages | list) }}"
     state: present
     update_cache: yes
   when: (ansible_distribution in ["Rocky","AlmaLinux","OracleLinux","CentOS"]) and ansible_distribution_major_version == "9"
@@ -57,6 +57,16 @@
     - { key: "listen.owner", value: "nginx" }
     - { key: "listen.group", value: "nginx" }
     - { key: "listen.mode",  value: "0660" }
+
+- name: apply Bitrix php-fpm pool directives (www)
+  blockinfile:
+    path: /etc/php-fpm.d/www.conf
+    marker: "; {mark} ANSIBLE MANAGED BITRIX PHP SETTINGS"
+    block: |
+      {% for key, val in standalone_phpfpm_pool_ini.items() %}
+      php_admin_value[{{ key }}] = {{ val }}
+      {% endfor %}
+  when: (standalone_phpfpm_pool_ini | length) > 0
 
 - name: install nginx php site config
   template:

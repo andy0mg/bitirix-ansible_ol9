@@ -8,6 +8,8 @@
     standalone_web_create_demo: false
     standalone_use_bitrix_repo: true
     standalone_nginx_package: bx-nginx
+    standalone_web_extra_packages:
+      - msmtp
     standalone_php_packages:
       - php-fpm
       - php-cli
@@ -28,6 +30,33 @@
       - php-pecl-imagick
       # Optional caching/session integrations:
       - php-pecl-redis5
+    standalone_phpfpm_pool_ini:
+      error_reporting: "E_ALL & ~E_NOTICE & ~E_WARNING"
+      enable_dl: "Off"
+      short_open_tag: "On"
+      allow_url_fopen: "On"
+      max_input_vars: "10000"
+      max_file_uploads: "100"
+      max_execution_time: "300"
+      max_input_time: "60"
+      output_buffering: "4096"
+      request_order: "GP"
+      variables_order: "GPCS"
+      post_max_size: "1024M"
+      upload_max_filesize: "1024M"
+      pcre.backtrack_limit: "1000000"
+      pcre.recursion_limit: "14000"
+      realpath_cache_size: "4096k"
+      mysql.default_socket: "/var/lib/mysqld/mysqld.sock"
+      mysqli.default_socket: "/var/lib/mysqld/mysqld.sock"
+      default_charset: "UTF-8"
+      sendmail_path: "msmtp -t -i"
+      memory_limit: "512M"
+      mail.add_x_header: "Off"
+      expose_php: "Off"
+      display_errors: "Off"
+      session.name: "BITRIX_PHPSESSID"
+      session.cookie_samesite: "\"Lax\""
   roles:
     - standalone-web
 
