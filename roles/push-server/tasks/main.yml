@@ -19,10 +19,10 @@
     msg: "manage = {{ manage }} and hostname = {{ hostname }}"
 
 - include_tasks: remove_nodjs_push-server.yml
-  when: "manage == 'remove_nodjs' and inventory_hostname == hostname"
+  when: "manage == 'remove_nodjs' and inventory_hostname == hostname and (push_server_configure_web | bool)"
 
 - include_tasks: remove_nodjs_push-server.yml
-  when: "manage == 'configure_nodejs' and inventory_hostname == push_server"
+  when: "manage == 'configure_nodejs' and inventory_hostname == push_server and (push_server_configure_web | bool)"
 
 - include_tasks: configure_nodjs_push-server.yml
   when: "manage == 'configure_nodejs' and inventory_hostname == hostname"

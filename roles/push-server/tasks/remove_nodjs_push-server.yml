@@ -5,6 +5,7 @@
 # remove settings from sites
 
 - include_tasks: sites-delete_push_server_settings.yml
+  when: push_server_configure_web | bool
 
 # remove apache settings
 
@@ -37,6 +38,7 @@
   service:
     name: httpd
     state: restarted
+  when: push_server_configure_web | bool
 
 #  remove nginx settings
 
@@ -49,12 +51,14 @@
     - /etc/nginx/bx/settings/rtc-im_settings.conf
     - /etc/nginx/bx/site_enabled/rtc-server.conf
     - /etc/nginx/bx/conf/rtc-im_subscrider.conf
+  when: push_server_configure_web | bool
 
 - name: remove sub and pub locations
   file:
     path: /etc/nginx/bx/conf/blank-im_subscrider.conf
     state: touch
   delegate_to: "{{ cluster_web_server }}"
+  when: push_server_configure_web | bool
 
 - name: nginx push-server links
   delegate_to: "{{ cluster_web_server  }}"
@@ -63,6 +67,7 @@
     dest: /etc/nginx/bx/site_enabled/push.conf
     state: link
     force: yes
+  when: push_server_configure_web | bool
 
 - name: nginx push-module location
   delegate_to: "{{ cluster_web_server  }}"
@@ -71,12 +76,14 @@
     dest: /etc/nginx/bx/conf/im_subscrider.conf
     state: link
     force: yes
+  when: push_server_configure_web | bool
 
 - name: service nginx restart
   delegate_to: "{{ cluster_web_server  }}"
   service:
     name: nginx
     state: restarted
+  when: push_server_configure_web | bool
 
 # nodejs service
 
@@ -147,3 +154,4 @@
 
 # ansible inventory
 - include_tasks: push-server-inventory-remove.yml
+  when: push_server_configure_web | bool
