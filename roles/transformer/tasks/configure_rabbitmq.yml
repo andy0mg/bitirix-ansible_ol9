@@ -87,16 +87,11 @@
   yum:
     name: php-pecl-amqp
     state: present
-  when: ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
+  when: transformer_install_php_amqp | default(true) | bool and ansible_distribution == "CentOS" and ansible_distribution_major_version == "7"
 
 # Rocky Linux 9 / AlmaLinux 9 / Oracle Linux 9 / CentOS Stream 9
 - name: install php package - php-pecl-amqp
   dnf:
     name: php-pecl-amqp
     state: present
-  when: (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
-
-- name: restart httpd service
-  service:
-    name: httpd
-    state: restarted
+  when: transformer_install_php_amqp | default(true) | bool and (ansible_distribution == "Rocky" or ansible_distribution == "AlmaLinux" or ansible_distribution == "OracleLinux" or ansible_distribution == "CentOS") and ansible_distribution_major_version == "9"
