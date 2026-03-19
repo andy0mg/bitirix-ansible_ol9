@@ -4,7 +4,7 @@ name=Bitrix Env - {{ ansible_distribution }}-{{ ansible_distribution_major_versi
 failovermethod=priority
 baseurl=https://repo.bitrix.info/yum/el/{{ ansible_distribution_major_version }}/$basearch
 enabled=1
-gpgcheck=1
+gpgcheck={{ 1 if (standalone_bitrix_repo_gpgcheck | default(false) | bool) else 0 }}
 gpgkey=https://repo.bitrix.info/yum/RPM-GPG-KEY-BitrixEnv
 {% else %}
 [bitrix-beta]
@@ -12,6 +12,6 @@ name=Bitrix Env Beta - {{ ansible_distribution  }}-{{ ansible_distribution_major
 failovermethod=priority
 baseurl=https://repo.bitrix.info/yum-beta/el/{{ ansible_distribution_major_version }}/$basearch
 enabled=1
-gpgcheck=1
+gpgcheck={{ 1 if (standalone_bitrix_repo_gpgcheck | default(false) | bool) else 0 }}
 gpgkey=https://repo.bitrix.info/yum/RPM-GPG-KEY-BitrixEnv
 {% endif %}

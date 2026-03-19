@@ -12,7 +12,7 @@
   rpm_key:
     state: present
     key: https://repo.bitrix.info/yum/RPM-GPG-KEY-BitrixEnv
-  when: standalone_use_bitrix_repo | bool
+  when: standalone_use_bitrix_repo | bool and (standalone_bitrix_repo_gpgcheck | bool)
 
 - name: install nginx and php-fpm (EL9)
   dnf:
