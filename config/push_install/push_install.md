@@ -24,7 +24,56 @@ chown -R redis:redis /etc/redis /var/log/redis /var/run/redis
 
 ```bash
 cat > /etc/redis/redis.conf <<'EOF'
-...
+pidfile /var/run/redis/redis-server.pid
+logfile /var/log/redis/redis.log
+dir /var/lib/redis
+protected-mode no
+bind 127.0.0.1
+port 6379
+tcp-backlog 511
+unixsocket /var/run/redis/redis.sock
+unixsocketperm 777
+timeout 0
+tcp-keepalive 300
+daemonize no
+supervised systemd
+loglevel notice
+databases 16
+save 86400 1
+save 7200 10
+save 3600 10000
+stop-writes-on-bgsave-error no
+rdbcompression yes
+rdbchecksum yes
+dbfilename dump.rdb
+appendonly no
+appendfilename "appendonly.aof"
+appendfsync everysec
+no-appendfsync-on-rewrite no
+auto-aof-rewrite-percentage 100
+auto-aof-rewrite-min-size 64mb
+aof-load-truncated yes
+lua-time-limit 5000
+slowlog-log-slower-than 10000
+slowlog-max-len 128
+latency-monitor-threshold 0
+notify-keyspace-events ""
+hash-max-ziplist-entries 512
+hash-max-ziplist-value 64
+list-max-ziplist-size -2
+list-compress-depth 0
+set-max-intset-entries 512
+zset-max-ziplist-entries 128
+zset-max-ziplist-value 64
+hll-sparse-max-bytes 3000
+activerehashing yes
+client-output-buffer-limit normal 0 0 0
+client-output-buffer-limit replica 256mb 64mb 60
+client-output-buffer-limit pubsub 32mb 8mb 60
+hz 10
+aof-rewrite-incremental-fsync yes
+maxmemory 459mb
+maxmemory-policy allkeys-lru
 EOF
 ```
 - Перезаписывает `redis.conf` готовым конфигом: сокет, память, политика вытеснения, RDB/AOF и пр.
