@@ -20,3 +20,7 @@ iptables_configure: enable
 
 # amazon cloud or generic installation: generic|amazon
 pool_installation: generic
+
+# default redis passwords for transformer/rabbitmq integration
+redis_password: "red1s"
+redis_root_password: "red1s"
