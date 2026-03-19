@@ -21,6 +21,7 @@ standalone_nginx_package: nginx
 standalone_use_bitrix_repo: false
 beta_version: disable
 standalone_bitrix_repo_gpgcheck: false
+standalone_bitrix_repo_sslverify: true
 
 # Extra PHP packages (extensions) to install alongside php-fpm.
 # Override from playbooks for a Bitrix-ready set.
