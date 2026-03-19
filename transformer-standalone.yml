@@ -1,0 +1,12 @@
+---
+# Standalone transformer install (EL9).
+- hosts: bitrix-hosts
+  become: true
+  vars:
+    is_create: true
+    is_remove: false
+    transformer_standalone: true
+    transformer_host: "{{ inventory_hostname }}"
+  roles:
+    - transformer
+

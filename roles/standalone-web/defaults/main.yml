@@ -1,0 +1,16 @@
+---
+# Minimal nginx + php-fpm stack for EL9 (Oracle Linux 9, Rocky/Alma/CentOS Stream 9)
+
+standalone_web_root: /var/www/html
+standalone_web_server_name: _
+
+# If true, creates a demo PHP file at {{ standalone_web_root }}/index.php
+standalone_web_create_demo: true
+
+# php-fpm pool settings (www)
+standalone_phpfpm_user: nginx
+standalone_phpfpm_group: nginx
+
+# nginx listen port
+standalone_nginx_listen: 80
+

@@ -1,0 +1,9 @@
+---
+# Standalone nginx + php-fpm install for EL9.
+- hosts: bitrix-hosts
+  become: true
+  vars:
+    standalone_web_create_demo: true
+  roles:
+    - standalone-web
+

@@ -1,0 +1,12 @@
+---
+# Standalone memcached install (EL9).
+- hosts: bitrix-hosts
+  become: true
+  vars:
+    memcached_mange: update
+    memcached_server: "{{ inventory_hostname }}"
+    # no pool/Bitrix integration
+    ansible_playbook_file: NOT_DEFINED
+  roles:
+    - memcached
+

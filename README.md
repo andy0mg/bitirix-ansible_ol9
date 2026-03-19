@@ -22,6 +22,20 @@ ansible-playbook -i inventory/hosts push-server.yml
 
 By default `push-server.yml` runs with `push_server_configure_web: false` (no nginx/apache/Bitrix integration).
 
+## Install nginx + php-fpm (standalone)
+
+```bash
+ansible-playbook -i inventory/hosts nginx-phpfpm.yml
+```
+
+This installs `nginx` and `php-fpm` and creates a demo `index.php` in `/var/www/html`.
+
+## Install memcached (standalone)
+
+```bash
+ansible-playbook -i inventory/hosts memcached-standalone.yml
+```
+
 ## Install transformer (standalone mode)
 
 ```bash
@@ -29,6 +43,12 @@ ansible-playbook -i inventory/hosts transformer.yml
 ```
 
 By default `transformer.yml` runs with `transformer_standalone: true` (packages/services only).
+
+You can also run:
+
+```bash
+ansible-playbook -i inventory/hosts transformer-standalone.yml
+```
 
 ## Notes
 

@@ -1,0 +1,86 @@
+---
+- name: install nginx and php-fpm (EL9)
+  dnf:
+    name:
+      - nginx
+      - php-fpm
+      - php-cli
+    state: present
+    update_cache: yes
+  when: (ansible_distribution in ["Rocky","AlmaLinux","OracleLinux","CentOS"]) and ansible_distribution_major_version == "9"
+
+- name: ensure web root exists
+  file:
+    path: "{{ standalone_web_root }}"
+    state: directory
+    owner: nginx
+    group: nginx
+    mode: 0755
+
+- name: configure php-fpm pool (www) user/group
+  lineinfile:
+    path: /etc/php-fpm.d/www.conf
+    regexp: "^{{ item.key }}\\s*=.*$"
+    line: "{{ item.key }} = {{ item.value }}"
+    backup: yes
+  loop:
+    - { key: "user",  value: "{{ standalone_phpfpm_user }}" }
+    - { key: "group", value: "{{ standalone_phpfpm_group }}" }
+
+- name: configure php-fpm to listen on unix socket
+  lineinfile:
+    path: /etc/php-fpm.d/www.conf
+    regexp: "^listen\\s*=.*$"
+    line: "listen = /run/php-fpm/www.sock"
+    backup: yes
+
+- name: configure socket owner/group/mode
+  lineinfile:
+    path: /etc/php-fpm.d/www.conf
+    regexp: "^{{ item.key }}\\s*=.*$"
+    line: "{{ item.key }} = {{ item.value }}"
+    insertafter: "^listen\\s*=.*$"
+    backup: yes
+  loop:
+    - { key: "listen.owner", value: "nginx" }
+    - { key: "listen.group", value: "nginx" }
+    - { key: "listen.mode",  value: "0660" }
+
+- name: install nginx php site config
+  template:
+    src: php.conf.j2
+    dest: /etc/nginx/conf.d/php.conf
+    owner: root
+    group: root
+    mode: 0644
+
+- name: remove default nginx welcome config if present
+  file:
+    path: /etc/nginx/conf.d/default.conf
+    state: absent
+
+- name: create demo php page
+  copy:
+    dest: "{{ standalone_web_root }}/index.php"
+    owner: nginx
+    group: nginx
+    mode: 0644
+    content: |
+      <?php
+      echo "OK: nginx + php-fpm\n";
+      echo "PHP version: " . PHP_VERSION . "\n";
+      ?>
+  when: standalone_web_create_demo | bool
+
+- name: enable and start php-fpm
+  service:
+    name: php-fpm
+    state: started
+    enabled: yes
+
+- name: enable and start nginx
+  service:
+    name: nginx
+    state: started
+    enabled: yes
+

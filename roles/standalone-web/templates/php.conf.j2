@@ -1,0 +1,19 @@
+server {
+    listen {{ standalone_nginx_listen }};
+    server_name {{ standalone_web_server_name }};
+
+    root {{ standalone_web_root }};
+    index index.php index.html;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include fastcgi_params;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_index index.php;
+        fastcgi_pass unix:/run/php-fpm/www.sock;
+    }
+}
+
