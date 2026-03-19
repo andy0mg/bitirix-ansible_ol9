@@ -3,6 +3,7 @@
     manage: "{{ manage | default('configure_nodejs') }}"
     hostname: "{{ hostname | default(inventory_hostname) }}"
     push_server: "{{ push_server | default(inventory_hostname) }}"
+    bx_netaddr: "{{ bx_netaddr | default(ansible_default_ipv4.address | default('127.0.0.1')) }}"
 
 - debug:
     msg: "{{ ansible_playbook_file }}"
